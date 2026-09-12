@@ -59,66 +59,97 @@ model = Ridge(alpha=1.0)   # alpha is λ, the penalty strength
 
 ## 2. Lasso and Elastic Net
 
-### Lasso Regression
+### Lasso Regression (L1 Regularization)
 
-Same idea as Ridge, but with an **L1 penalty** (sum of *absolute* coefficients):
+Lasso looks almost like Ridge — but the penalty uses the **absolute value** of slopes, not the square:
 
 $$J_{lasso}(\theta) = \frac{1}{2m}\sum(\hat{y} - y)^2 + \lambda \sum_{j=1}^{n} |\theta_j|$$
 
-- **Key trait:** Lasso can push coefficients **exactly to zero** — it deletes useless features. This makes it a **built-in feature selector**.
+That one change (`|θ|` instead of `θ²`) has a big consequence. Recall from Ridge: as λ increases, slopes shrink but **never hit exactly 0**. With Lasso's absolute-value penalty, as λ increases the slopes shrink and **eventually snap all the way to 0**.
 
-**Remember:** *Lasso = absolute penalty = zeroes out weak features (automatic selection).*
+**Why that matters — automatic feature selection:** a coefficient of 0 means that feature contributes nothing (0 × x = 0), so it's effectively **removed** from the model. Lasso drives the coefficients of **weakly-correlated (unimportant) features to zero**, while keeping the important ones. It's feature selection built into the training.
 
-**Use when:** you suspect many features are useless and want a sparse, simpler model.
+Example — `y = 0.52·x₁ + 0.72·x₂ + 0.034·x₃ + 0.12·x₄`. After Lasso, the weak features (x₃'s 0.034, x₄'s 0.12) get zeroed out; the strong ones stay (shrunk a little). The model now uses only the features that actually matter.
+
+**Remember:** *Lasso = L1 = absolute-slope penalty. ↑λ ⇒ slopes shrink to exactly 0 ⇒ removes weak features (automatic selection).*
+
+**Use when:** you have **many features** (dozens/hundreds) and want the model to automatically drop the useless ones.
 
 ```python
 from sklearn.linear_model import Lasso
-model = Lasso(alpha=0.1)
+model = Lasso(alpha=0.1)   # alpha is λ
 ```
 
-### Elastic Net
+### Elastic Net — the combination of both
 
-The **best of both** — mixes L1 (Lasso) and L2 (Ridge):
+Elastic Net simply **combines Ridge + Lasso**, so it fixes **both** problems at once: reduce overfitting (Ridge's job) *and* do feature selection (Lasso's job). It adds both penalty terms, each with its own λ:
 
-$$J_{elastic}(\theta) = \frac{1}{2m}\sum(\hat{y} - y)^2 + \lambda \left( r\sum|\theta_j| + (1-r)\sum \theta_j^2 \right)$$
+$$J_{elastic}(\theta) = \frac{1}{2m}\sum(\hat{y} - y)^2 + \underbrace{\lambda_1 \sum \theta_j^2}_{\text{Ridge: reduce overfitting}} + \underbrace{\lambda_2 \sum |\theta_j|}_{\text{Lasso: feature selection}}$$
 
-- **r = `l1_ratio`** controls the blend: r=1 is pure Lasso, r=0 is pure Ridge.
-- **Use when:** you have many correlated features *and* want feature selection. Lasso alone struggles with correlated features (picks one at random); Elastic Net handles groups better.
+In sklearn this is expressed as one `alpha` (overall strength) plus an **`l1_ratio`** (the Lasso-vs-Ridge blend: 1 = pure Lasso, 0 = pure Ridge).
 
-**Remember:** *Elastic Net = Lasso + Ridge blended = selection + stability.*
+**Use when:** your model is **overfitting AND has lots of features** — especially correlated ones. (Lasso alone gets shaky with correlated features, picking one at random; the Ridge part steadies it.)
+
+**Remember:** *Elastic Net = Ridge + Lasso = fixes overfitting AND selects features.*
 
 ```python
 from sklearn.linear_model import ElasticNet
-model = ElasticNet(alpha=0.1, l1_ratio=0.5)
+model = ElasticNet(alpha=0.1, l1_ratio=0.5)   # 50/50 blend of L1 and L2
 ```
 
-### Quick Comparison
+### The Big Idea Tying All Three Together
 
-| Method | Penalty | Shrinks θ? | Zeroes θ? | Best for |
+Ridge, Lasso, and Elastic Net are all ways to **hyperparameter-tune linear regression** — you use plain linear regression first, then reach for one of these when it misbehaves:
+
+| Method | Penalty | Shrinks θ? | Zeroes θ? | Reach for it when… |
 |---|---|---|---|---|
-| Ridge | L2 (squared) | Yes | No | Correlated / many small effects |
-| Lasso | L1 (absolute) | Yes | Yes | Sparse models, feature selection |
-| Elastic Net | L1 + L2 | Yes | Yes | Correlated features + selection |
+| Ridge | L2 (squared) | Yes | **No** | Model is **overfitting** (high train acc, low test acc) |
+| Lasso | L1 (absolute) | Yes | **Yes** | You have **many features** and want unimportant ones dropped |
+| Elastic Net | L1 + L2 | Yes | **Yes** | **Both** — overfitting *and* too many features |
 
 ---
 
 ## 3. Types of Cross-Validation
 
-**Why:** a single train/test split can be lucky or unlucky. **Cross-validation (CV)** tests on multiple splits and averages the scores → a more trustworthy estimate of real-world performance.
+### First — train / validation / test
 
-| Type | How it works | When to use |
+- **Train set** → the model *learns* on this.
+- **Validation set** → carved out of the training data; used to **tune hyperparameters** and check the model as we build it.
+- **Test set** → locked away, **never shown** to the model until the very end, to measure real-world performance.
+
+**Why CV exists:** if you split train/validation just once, the result depends on luck — change the `random_state` and you might get 85% one time, 92% another, 78% the next. That's not a number you can trust. **Cross-validation** runs *many* splits, so every point gets a turn in validation, then **averages** the scores → a stable, honest estimate (and you can also report the min/max/average).
+
+### The main types
+
+**1. Leave-One-Out CV (LOOCV)** — validation set = **exactly 1 record**; everything else trains. Repeat until *every* record has been the lone validation point (500 records → 500 experiments).
+- ✅ Uses almost all data for training each time.
+- ❌ Extremely **slow** on big data, and tends to **overfit** (validation of size 1 is noisy). Rarely used in practice.
+
+**2. Leave-P-Out CV** — same as LOOCV but hold out **P records** at a time instead of 1. P is a hyperparameter (e.g. 10, 20). Even more experiments — mostly of theoretical interest.
+
+**3. K-Fold CV** — the **default**. Split data into **K equal folds**. Each fold takes a turn as validation while the other K−1 train. K experiments, then average.
+- Example: 500 records, K=5 → each fold = 500÷5 = **100 records** for validation, 400 for training. Fold 1 validates on records 1–100, fold 2 on 101–200, … 5 experiments cover everything.
+
+**4. Stratified K-Fold** — K-Fold's smarter sibling for **classification**. Plain K-Fold can accidentally put mostly one class in a fold (e.g. a validation fold that's *all* 1s), which teaches the model nothing. Stratified K-Fold forces each fold to keep the **same class proportions** as the full data (e.g. a 60/40 split stays ~60/40 in every fold).
+
+**5. Time Series CV** — for **time-ordered data** (reviews, sales, weather). You must **never shuffle**: always train on the **past** and validate on the **future**. Splits grow forward in time (day 1–4 train → day 5 validate; then 1–5 train → day 6 validate …). Random splitting would leak future info into the past.
+
+### Quick recall
+
+| Type | Validation set | Use when |
 |---|---|---|
-| **K-Fold** | Split data into K parts; each part is the test set once, rest is train. Average K scores. | The default for most problems. |
-| **Stratified K-Fold** | Like K-Fold but keeps class proportions equal in each fold. | **Classification**, especially imbalanced classes. |
-| **Leave-One-Out (LOOCV)** | K = number of samples (test on 1 point at a time). | Tiny datasets; very thorough but slow. |
-| **Repeated K-Fold** | Run K-Fold several times with different random splits. | When you want extra-stable estimates. |
-| **Time Series Split** | Train on past, test on future (never shuffle time). | **Time-ordered data** (stock, weather, sales). |
+| Leave-One-Out | 1 record | Tiny data; thorough but slow (overfits) |
+| Leave-P-Out | P records | Rarely — theoretical |
+| **K-Fold** | 1 of K folds | **Default for most problems** |
+| **Stratified K-Fold** | 1 fold, class-balanced | **Classification** (esp. imbalanced) |
+| **Time Series** | future block | **Time-ordered data** (never shuffle) |
 
-**Remember:** *K-Fold = default. Stratified = classification. TimeSeriesSplit = never shuffle time.*
+**Remember:** *K-Fold = default. Stratified = classification. Time Series = never shuffle time. LOOCV = 1-at-a-time, slow.*
 
 ```python
-from sklearn.model_selection import cross_val_score, KFold
+from sklearn.model_selection import cross_val_score
 scores = cross_val_score(model, X, y, cv=5)   # 5-fold CV
+print(scores.mean(), scores.std())            # average performance ± spread
 ```
 
 ---
