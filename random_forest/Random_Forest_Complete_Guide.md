@@ -437,5 +437,5 @@ Use a **single Decision Tree** when explainability is the main requirement—for
 - **Decision Trees** — review splitting, Gini/entropy, variance reduction, and pruning in `../decision_tree/`.
 - **Classification metrics** — revisit precision, recall, F1-score, ROC curves, and AUC in `../logistic_regression/`.
 - **Regularization and model workflow** — see Ridge, Lasso, Elastic Net, feature selection, and cross-validation in `../ridge_lasso_elasticnet/`.
-- **Boosting** — continue with AdaBoost, Gradient Boosting, and XGBoost to learn the sequential ensemble family.
+- **Boosting** — continue with AdaBoost in `../adaboost/` and Gradient Boosting in `../gradient_boosting/` to learn the sequential ensemble family.
 - **Model comparison** — compare Random Forest with KNN (`../k_nearest_neighbour/`) and SVM (`../support_vector_machine/`) on the same cleaned dataset.

@@ -256,7 +256,7 @@ print("RMSE:", np.sqrt(mean_squared_error(y_test, y_pred)))
 
 - **MAE:** average size of the prediction error.
 - **RMSE:** penalizes large errors more strongly than MAE.
-- **$R^2$:** describes how much target variation is explained; a negative test value is worse than predicting the training-target mean.
+- **$R^2$:** describes how much target variation is explained; a negative test value is worse than predicting the test-target mean.
 
 **Remember:** *AdaBoost.R2 focuses on larger regression errors and combines regressors with a weighted median, not an ordinary mean.*
 
@@ -416,5 +416,5 @@ Be careful or choose another method when:
 - **Random Forest** — revisit bagging, bootstrap sampling, and parallel tree ensembles in `../random_forest/`.
 - **Decision Trees** — review tree splitting, impurity, variance reduction, and pruning in `../decision_tree/`.
 - **Classification metrics** — precision, recall, F1-score, ROC curves, and AUC apply to AdaBoost just as they do to logistic regression; see `../logistic_regression/` for worked examples.
-- **Gradient Boosting and XGBoost** — the next boosting algorithms; they build on AdaBoost's sequential ensemble idea with more flexible loss optimization.
+- **Gradient Boosting** — continue to residual and loss-gradient-based boosting in `../gradient_boosting/`; then study XGBoost and related algorithms.
 - **Regularization and cross-validation** — revisit evaluation and model-selection workflow in `../ridge_lasso_elasticnet/`.
